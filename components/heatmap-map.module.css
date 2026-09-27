@@ -1,0 +1,10 @@
+.frame { position: relative; isolation: isolate; overflow: hidden; border-radius: 14px; background: #091b30; }
+.map { width: 100%; height: 560px; background: #091b30; }
+/* Filter only OSM tile pixels. Heat, controls and attribution retain original colors. */
+.tiles { filter: invert(1) hue-rotate(170deg) saturate(.5) brightness(.67) contrast(.92); }
+.fit { position: absolute; z-index: 450; top: 14px; right: 14px; padding: 9px 12px; border: 1px solid #3c718a; border-radius: 8px; background: #0c2438ee; color: #e0faff; font-size: 12px; }
+.fit:focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
+.legend { position: absolute; z-index: 450; left: 14px; bottom: 30px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: #091b30e8; color: #e0faff; font-size: 11px; pointer-events: none; }
+.legend i { width: 75px; height: 6px; border-radius: 6px; background: linear-gradient(90deg,#164e9b,#168ee0,#22d3ee,#c5f6ff); }
+.hotspot span { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #a5f3fc; border-radius: 50%; background: #082f49; color: #ecfeff; font: 600 12px sans-serif; box-shadow: 0 0 12px #22d3ee55; }
+@media (max-width: 767px) { .map { height: 380px; } .legend { font-size: 10px; gap: 5px; } .legend i { width: 45px; } }

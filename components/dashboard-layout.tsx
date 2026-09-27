@@ -10,10 +10,12 @@ import {
   ListChecks,
   ArrowLeft,
   Globe,
+  BarChart3,
 } from 'lucide-react';
 
 const NAV = [
   { href: '/dashboard', label: 'Обзор', icon: LayoutDashboard, exact: true, operatorOnly: true },
+  { href: '/dashboard/analytics', label: 'Аналитика', icon: BarChart3, exact: false, operatorOnly: true },
   { href: '/dashboard/reports', label: 'Обращения', icon: ListChecks, operatorOnly: false },
 ];
 

@@ -2,11 +2,13 @@
 
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { StatusBadge } from '@/components/status-badge';
-import { fetchReports } from '@/lib/reports';
+import { fetchOperationalReports } from '@/lib/reports';
 import { getCategoryIcon, getCategoryLabel } from '@/lib/categories';
 import { ReportStatus, STATUS_LABELS, CATEGORY_LABELS, ReportCategory, Report } from '@/lib/types';
 import { formatDate } from '@/components/report-card';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
 import { Search, ArrowRight, Loader2, Users } from 'lucide-react';
 
@@ -18,6 +20,8 @@ const STATUS_FILTERS: { value: 'all' | ReportStatus; label: string }[] = [
 ];
 
 export default function DashboardReportsPage() {
+  const {isOperator,isDeveloper,isLoading:authLoading,organizationId}=useAuth();
+  const router=useRouter();
   const [statusFilter, setStatusFilter] = useState<'all' | ReportStatus>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | ReportCategory>('all');
   const [search, setSearch] = useState('');
@@ -25,19 +29,18 @@ export default function DashboardReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(()=>{if(!authLoading&&!isOperator&&!isDeveloper)router.replace('/');},[authLoading,isOperator,isDeveloper,router]);
   useEffect(() => {
-    fetchReports()
-      .then((data) => {
-        setReports(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    if(authLoading||(!isOperator&&!isDeveloper))return;
+    let active=true;setLoading(true);setReports([]);
+    fetchOperationalReports().then(data=>{if(active){setReports(data);setLoading(false);}}).catch(()=>{if(active)setLoading(false);});
+    return()=>{active=false;};
+  },[authLoading,isOperator,isDeveloper,organizationId]);
 
   const filtered = useMemo(() => {
     let result = reports.filter((r) => {
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
-      if (categoryFilter !== 'all' && r.category !== categoryFilter) return false;
+      if (isDeveloper && categoryFilter !== 'all' && r.category !== categoryFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -67,8 +70,9 @@ export default function DashboardReportsPage() {
     });
 
     return result;
-  }, [reports, statusFilter, categoryFilter, search, sortBy]);
+  }, [reports, statusFilter, categoryFilter, search, sortBy, isDeveloper]);
 
+  if(authLoading||(!isOperator&&!isDeveloper))return null;
   const categories = Object.keys(CATEGORY_LABELS) as ReportCategory[];
 
   return (
@@ -76,7 +80,7 @@ export default function DashboardReportsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-navy sm:text-3xl">Обращения</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Управление всеми обращениями граждан
+          {isDeveloper?'Обращения для независимой проверки':'Обращения вашей организации'}
         </p>
       </div>
 
@@ -98,7 +102,8 @@ export default function DashboardReportsPage() {
           ))}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <select
+          {isDeveloper && <select
+            aria-label="Категория обращений"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as 'all' | ReportCategory)}
             className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-navy focus:border-primary focus:outline-none"
@@ -107,7 +112,7 @@ export default function DashboardReportsPage() {
             {categories.map((c) => (
               <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
             ))}
-          </select>
+          </select>}
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'newest' | 'most_supported' | 'longest_unresolved')}

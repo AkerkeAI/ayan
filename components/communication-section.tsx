@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase-client';
+async function staffFetch(url:string,init:RequestInit={}) {
+ const {data:{session}}=await supabase.auth.getSession();
+ return fetch(url,{...init,headers:{...init.headers,Authorization:`Bearer ${session?.access_token??''}`}});
+}
 import { Report } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,7 +60,7 @@ export function CommunicationSection({ report }: CommunicationSectionProps) {
     }
 
     try {
-      const response = await fetch(`/api/organizations?id=${report.organizationId}`);
+      const response = await staffFetch(`/api/organizations?id=${report.organizationId}`);
       if (!response.ok) {
         console.error('Organization API returned error:', response.status);
         setOrganization(null);
@@ -75,7 +80,7 @@ export function CommunicationSection({ report }: CommunicationSectionProps) {
 
   const loadLatestMessage = async () => {
     try {
-      const response = await fetch(`/api/messages/report/${report.id}?latest=true`);
+      const response = await staffFetch(`/api/messages/report/${report.id}?latest=true`);
       if (!response.ok) {
         console.error('Messages API returned error:', response.status);
         return;
@@ -98,7 +103,7 @@ export function CommunicationSection({ report }: CommunicationSectionProps) {
 
     setGenerating(true);
     try {
-      const response = await fetch('/api/messages/generate', {
+      const response = await staffFetch('/api/messages/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -128,7 +133,7 @@ export function CommunicationSection({ report }: CommunicationSectionProps) {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/messages/${message.id}`, {
+      const response = await staffFetch(`/api/messages/${message.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: editedBody }),
@@ -157,7 +162,7 @@ export function CommunicationSection({ report }: CommunicationSectionProps) {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/messages/${message.id}`, {
+      const response = await staffFetch(`/api/messages/${message.id}`, {
         method: 'DELETE',
       });
 

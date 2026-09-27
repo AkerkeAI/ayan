@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Menu, X, Waves } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '@/lib/auth-context';
+import { toast } from 'sonner';
 
 const NAV_LINKS = [
   { href: '/', label: 'Главная' },
@@ -15,6 +17,13 @@ const NAV_LINKS = [
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const {isOperator,isDeveloper,isLoading,logout}=useAuth();
+  const staff=!isLoading && (isOperator || isDeveloper);
+  const links=staff ? [
+    ...(isOperator ? [{href:'/dashboard',label:'Обзор'},{href:'/dashboard/reports',label:'Обращения'},{href:'/dashboard/analytics',label:'Аналитика'}] : [{href:'/dashboard/reports',label:'Обращения'},{href:'/dashboard/review',label:'Проверка решений'}]),
+    {href:'/',label:'На сайт'},
+  ] : NAV_LINKS;
+  const signOut=async()=>{try{await logout();setOpen(false);}catch{toast.error('Не удалось выйти. Попробуйте ещё раз.');}};
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-white/80 backdrop-blur-lg">
@@ -33,10 +42,10 @@ export function SiteHeader() {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {NAV_LINKS.map((link) => {
+        <nav aria-label="Основная навигация" className={cn("hidden items-center gap-1",staff?"lg:flex":"md:flex")}>
+          {links.map((link) => {
             const active =
-              link.href === '/'
+              (link.href === '/' || link.href === '/dashboard')
                 ? pathname === '/'
                 : pathname.startsWith(link.href);
             return (
@@ -57,15 +66,18 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link
+          {!staff && <Link
             href="/report"
             className="hidden rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-navy-light hover:shadow-md sm:inline-flex"
           >
             Сообщить о проблеме
-          </Link>
+          </Link>}
+          {staff && <button onClick={signOut} className="rounded-lg px-3 py-2 text-sm font-medium text-navy hover:bg-muted">Выйти</button>}
           <button
             onClick={() => setOpen(!open)}
-            className="rounded-lg p-2 text-navy hover:bg-muted md:hidden"
+            className={cn("rounded-lg p-2 text-navy hover:bg-muted",staff?"lg:hidden":"md:hidden")}
+            aria-expanded={open}
+            aria-controls="site-mobile-navigation"
             aria-label="Меню"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -74,11 +86,11 @@ export function SiteHeader() {
       </div>
 
       {open && (
-        <div className="border-t border-border/60 bg-white md:hidden">
+        <div id="site-mobile-navigation" className={cn("border-t border-border/60 bg-white",staff?"lg:hidden":"md:hidden")}>
           <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
-            {NAV_LINKS.map((link) => {
+            {links.map((link) => {
               const active =
-                link.href === '/'
+                (link.href === '/' || link.href === '/dashboard')
                   ? pathname === '/'
                   : pathname.startsWith(link.href);
               return (
@@ -97,13 +109,13 @@ export function SiteHeader() {
                 </Link>
               );
             })}
-            <Link
+            {!staff && <Link
               href="/report"
               onClick={() => setOpen(false)}
               className="mt-1 rounded-lg bg-navy px-3 py-2.5 text-center text-sm font-semibold text-white"
             >
               Сообщить о проблеме
-            </Link>
+            </Link>}
           </nav>
         </div>
       )}

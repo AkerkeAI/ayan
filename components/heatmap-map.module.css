@@ -8,3 +8,5 @@
 .legend i { width: 75px; height: 6px; border-radius: 6px; background: linear-gradient(90deg,#164e9b,#168ee0,#22d3ee,#c5f6ff); }
 .hotspot span { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #a5f3fc; border-radius: 50%; background: #082f49; color: #ecfeff; font: 600 12px sans-serif; box-shadow: 0 0 12px #22d3ee55; }
 @media (max-width: 767px) { .map { height: 380px; } .legend { font-size: 10px; gap: 5px; } .legend i { width: 45px; } }
+
+.systemic span { border: 2px solid #c4b5fd; outline: 2px solid #8b5cf655; outline-offset: 4px; }

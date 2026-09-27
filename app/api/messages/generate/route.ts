@@ -1,65 +1,17 @@
-/**
- * API Route for Message Generation
- * 
- * POST /api/messages/generate - Generate an organization message
- */
-
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest,NextResponse } from 'next/server';
+import { requestDatabase,hasRole } from '@/lib/server/authorization';
 import { generateAndStoreMessage } from '@/lib/messaging/organization-messages';
-import { fetchReportById } from '@/lib/reports';
-import { getOrganizationById } from '@/lib/routing/routing-service';
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { reportId, organizationId } = body;
-
-    if (!reportId || !organizationId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: reportId, organizationId' },
-        { status: 400 }
-      );
-    }
-
-    // Fetch report data
-    const report = await fetchReportById(reportId);
-    if (!report) {
-      return NextResponse.json(
-        { error: 'Report not found' },
-        { status: 404 }
-      );
-    }
-
-    // Fetch organization data
-    const organization = await getOrganizationById(organizationId);
-    if (!organization) {
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      );
-    }
-
-    // Generate and store message
-    const message = await generateAndStoreMessage(
-      reportId,
-      organizationId,
-      report,
-      organization
-    );
-
-    if (!message) {
-      return NextResponse.json(
-        { error: 'Failed to generate message' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true, message });
-  } catch (error) {
-    console.error('Error in message generation API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+import { rowToReport } from '@/lib/types';
+import { z } from 'zod';
+export async function POST(request:NextRequest){
+ const body=z.object({reportId:z.string().uuid(),organizationId:z.string().uuid()}).strict().safeParse(await request.json().catch(()=>null));
+ if(!body.success)return NextResponse.json({error:'Некорректные данные'},{status:400});
+ const db=requestDatabase(request);
+ if(!await hasRole(db,'developer'))return NextResponse.json({error:'Нет доступа'},{status:403});
+ const {data:report}=await db.from('reports').select('*').eq('id',body.data.reportId).maybeSingle();
+ if(!report || report.organization_id!==body.data.organizationId)return NextResponse.json({error:'Назначение изменилось'},{status:403});
+ const {data:organization}=await db.from('organizations').select('*').eq('id',report.organization_id).maybeSingle();
+ if(!organization)return NextResponse.json({error:'Нет доступа'},{status:403});
+ const message=await generateAndStoreMessage(report.id,organization.id,rowToReport(report),organization,db);
+ return message?NextResponse.json({success:true,message}):NextResponse.json({error:'Не удалось создать черновик'},{status:409});
 }

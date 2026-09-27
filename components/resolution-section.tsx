@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase-client';
 import { Report } from '@/lib/types';
 import { getSupporterToken } from '@/lib/supporter-token';
 import { useAuth } from '@/lib/auth-context';
-import { Resolution, resolutionLabel } from '@/lib/resolutions/types';
+import { Resolution, resolutionLabel, resolutionReviewMessage } from '@/lib/resolutions/types';
 import { toast } from 'sonner';
 
 const button = 'rounded-lg border px-4 py-2 text-sm disabled:opacity-50';
@@ -53,22 +53,22 @@ export function ResolutionSection({report,isOperator,onChanged,onLatestChange}:{
     if(file.size>5*1024*1024 || !['image/jpeg','image/png','image/webp'].includes(file.type)) {toast.error('Выберите JPEG, PNG или WebP до 5 МБ');return;}
     setBusy(true);
     try {
-      const {data:{user}} = await supabase.auth.getUser();if(!user) throw new Error('Войдите как оператор');
+      const {data:{user}} = await supabase.auth.getUser();if(!user) throw new Error('Войдите как исполнитель');
       const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':'webp';
       const path=`${user.id}/${report.id}/${crypto.randomUUID()}.${ext}`;
       const {error}=await supabase.storage.from('resolution-images').upload(path,file,{contentType:file.type,upsert:false});if(error) throw error;
       const result=await request({action:'submit',note,photoPath:path});
       setNote('');setFile(null);form.reset();await load();await onChanged();
-      toast.success('Решение предоставлено. Ожидает проверки разработчиком.');
+      toast.success('Решение предоставлено. Ожидает проверки оператором Aýan.');
       // Submission is committed before optional AI analysis. Failure cannot undo evidence.
-      try {const analysis = await request({action:'analyze',resolutionId:result.resolutionId});if (analysis.manualReview) toast.info('Анализ недоступен — ожидает проверки разработчиком.');await load();await onChanged();}
-      catch {toast.info('Фото сохранено. Анализ недоступен — ожидает проверки разработчиком.');}
+      try {const analysis = await request({action:'analyze',resolutionId:result.resolutionId});if (analysis.manualReview) toast.info('Автоматическая проверка недоступна. Решение проверит оператор Aýan.');await load();await onChanged();}
+      catch {toast.info('Фото сохранено. Автоматическая проверка недоступна. Решение проверит оператор Aýan.');}
     } catch(e) {toast.error(e instanceof Error?e.message:'Не удалось сохранить решение');} finally {setBusy(false);}
   }
   const current=rows[0];
   return <section className="space-y-4 rounded-xl border bg-white p-5" aria-busy={busy}>
     <h3 className="font-semibold text-navy">Проверка решения</h3>
-    <p className="text-sm text-muted-foreground">Предоставленные доказательства и анализ ИИ не означают подтверждённое решение. Окончательное решение принимает независимый разработчик-проверяющий.</p>
+    <p className="text-sm text-muted-foreground">Предоставленные доказательства и анализ ИИ не означают подтверждённое решение. Окончательное решение принимает оператор Aýan.</p>
     {loading && <p>Загрузка…</p>}
     {error && <p role="alert">{error}</p>}
     {!loading && !error && !current && <p className="text-sm">Доказательства решения ещё не предоставлены.{report.status==='resolved' && ' Прежний статус «Решено» не является подтверждением по новой процедуре.'}</p>}
@@ -80,10 +80,10 @@ export function ResolutionSection({report,isOperator,onChanged,onLatestChange}:{
         <figure><figcaption>После</figcaption><img src={supabase.storage.from('resolution-images').getPublicUrl(r.after_photo_path).data.publicUrl} alt="Фото выполненных работ" className="h-56 w-full rounded object-contain"/></figure>
       </div>
       <p className="whitespace-pre-wrap break-words text-sm">{r.note}</p>
-      {!r.ai_result && <p className="text-sm text-muted-foreground">Анализ ИИ отсутствует. Требуется независимая проверка разработчиком.</p>}
+      <p className="text-sm text-muted-foreground">{resolutionReviewMessage(r.ai_result)}</p>
       {r.ai_result && <div className="rounded bg-muted p-3 text-sm"><p className="font-medium">ИИ: вспомогательный анализ, не подтверждение</p><p>{r.ai_result.likely_resolved?'На фото возможны признаки устранения':'Изменение не удалось подтвердить по фото'} · Уверенность модели: {Math.round(r.ai_result.confidence*100)}%</p><p>Дополнительная проверка по результату ИИ: {r.ai_result.requires_human_review ? 'требуется' : 'не запрошена'}. Решение всегда принимает независимый проверяющий.</p><ul className="list-disc pl-5">{r.ai_result.observations.map((o,j)=><li key={j}>{o}</li>)}</ul></div>}
       {i===0 && r.state!=='reopened' && <div className="space-y-3">
-        {isOperator && (r.state!=='verified' || !r.reviewed_at) && <p className="rounded bg-amber-50 p-3 text-sm">Ожидает проверки разработчиком. Оператор не может подтвердить решение.</p>}
+        {isOperator && (r.state!=='verified' || !r.reviewed_at) && <p className="rounded bg-amber-50 p-3 text-sm">Ожидает проверки оператором Aýan.</p>}
         {isDeveloper && <>
           {!r.submitted_by || r.submitted_by===user?.id
             ? <p className="text-sm">{!r.submitted_by ? 'Автор доказательств не установлен. Обратитесь к администратору для проверки происхождения.' : 'Это ваши доказательства. Требуется другой независимый проверяющий.'}</p>
@@ -93,7 +93,7 @@ export function ResolutionSection({report,isOperator,onChanged,onLatestChange}:{
                 <button className={button} disabled={busy||!reviewed} onClick={()=>act({action:'reopen',resolutionId:r.id})}>Проблема не решена / Повторно открыть</button>
               </div></>}
         </>}
-        {!isOperator && !isDeveloper && !authLoading && <><p className="text-xs text-muted-foreground">Отзыв из этого браузера анонимный и не подтверждает личность. Один отзыв на попытку решения; положительный отзыв требует проверки разработчиком.</p>{voted.includes(r.id)?<p className="text-sm">Ваш отзыв уже учтён</p>:<div className="flex flex-wrap gap-2">{r.state!=='verified'&&<button className={button} disabled={busy} onClick={()=>feedback(r.id,'confirm')}>Проблема устранена</button>}<button className={button} disabled={busy} onClick={()=>feedback(r.id,'reopen')}>Проблема остаётся — открыть повторно</button></div>}</>}
+        {!isOperator && !isDeveloper && !authLoading && r.state!=='verified' && <><p className="text-xs text-muted-foreground">Отзыв из этого браузера анонимный и не подтверждает личность. Один отзыв на попытку решения; положительный отзыв требует проверки оператором Aýan.</p>{voted.includes(r.id)?<p className="text-sm">Ваш отзыв уже учтён</p>:<div className="flex flex-wrap gap-2"><button className={button} disabled={busy} onClick={()=>feedback(r.id,'confirm')}>Проблема устранена</button><button className={button} disabled={busy} onClick={()=>feedback(r.id,'reopen')}>Проблема остаётся — открыть повторно</button></div>}</>}
       </div>}
     </article>)}
     {isOperator && !loading && !error && report.status!=='resolved' && (!current||current.state==='reopened') && <form onSubmit={submit} className="space-y-3">

@@ -23,7 +23,7 @@ export function DeveloperReview({reportId}:{reportId?:string}) {
     setBusy(true);setError('');
     try {
       const {data:{session}}=await supabase.auth.getSession();
-      if (!session) throw new Error('Войдите как разработчик-проверяющий');
+      if (!session) throw new Error('Войдите как оператор Aýan');
       const response=await fetch(`/api/review?${reportId?`reportId=${encodeURIComponent(reportId)}&`:''}page=${page}`,{
         headers:{Authorization:`Bearer ${session.access_token}`},cache:'no-store',
       });
@@ -34,7 +34,7 @@ export function DeveloperReview({reportId}:{reportId?:string}) {
   },[isDeveloper,reportId,page]);
   useEffect(()=>{void load();},[load]);
   if(isLoading) return <DashboardLayout><p>Проверка доступа…</p></DashboardLayout>;
-  if(!isDeveloper) return <DashboardLayout><h1 className="text-xl font-bold">Доступ только для разработчика-проверяющего</h1><p className="mt-3">Войдите через существующую форму входа. Оператор не может выполнять независимую проверку.</p></DashboardLayout>;
+  if(!isDeveloper) return <DashboardLayout><h1 className="text-xl font-bold">Доступ только для оператора Aýan</h1><p className="mt-3">Войдите через существующую форму входа. Независимую проверку выполняет оператор Aýan.</p></DashboardLayout>;
   const current=cases[0];
   return <DashboardLayout>
     <h1 className="mb-3 text-2xl font-bold text-navy">{reportId?'Независимая проверка решения':'Очередь проверки решений'}</h1>

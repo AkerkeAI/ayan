@@ -156,10 +156,10 @@ function mapEventTypeToStatus(eventType: string): ReportStatus {
 function mapActorTypeToAuthor(actorType: string, organizationId?: string): string {
   const authorMap: Record<string, string> = {
     'system': 'Система',
-    'operator': 'Оператор',
+    'operator': 'Исполнитель',
     'organization': 'Организация',
     'ai': 'ИИ',
-    'developer': 'Независимый проверяющий',
+    'developer': 'Оператор Aýan',
     'resident': 'Житель (анонимно)',
   };
   return authorMap[actorType] || 'Система';

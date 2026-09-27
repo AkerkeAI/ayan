@@ -20,3 +20,8 @@ export function advisoryDatabase() {
     auth:{persistSession:false,autoRefreshToken:false},
   });
 }
+
+export async function canOperateReport(db: ReturnType<typeof requestDatabase>, reportId: string) {
+  const {data,error}=await db.rpc('can_operate_report',{p_report_id:reportId});
+  return !error && data===true;
+}

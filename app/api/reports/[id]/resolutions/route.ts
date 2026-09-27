@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requestDatabase, hasRole, advisoryDatabase } from '@/lib/server/authorization';
+import { requestDatabase, hasRole, advisoryDatabase, canOperateReport } from '@/lib/server/authorization';
 import { z } from 'zod';
 import { compareEvidence } from '@/lib/resolutions/ai';
 import { fetchEvidence } from '@/lib/resolutions/images';
@@ -32,7 +32,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   try {
     if (body.action !== 'feedback') {
       const role = body.action === 'verify' || body.action === 'reopen' ? 'developer' : 'operator';
-      if (!await hasRole(db,role)) return NextResponse.json({error:role === 'developer' ? 'Требуется независимый разработчик-проверяющий' : 'Требуется вход оператора'}, {status:403});
+      if (!await hasRole(db,role)) return NextResponse.json({error:role === 'developer' ? 'Требуется оператор Aýan' : 'Требуется вход исполнителя'}, {status:403});
+    }
+    if ((body.action === 'submit' || body.action === 'analyze') && !await canOperateReport(db,params.id)) {
+      return NextResponse.json({error:'Обращение не назначено вашей организации'}, {status:403});
     }
     if (body.action === 'submit') {
       const {data: {user}} = await db.auth.getUser(request.headers.get('authorization')?.replace(/^Bearer /i,''));
@@ -48,6 +51,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const {data: resolution, error: readError} = await db.from('report_resolutions').select('id,state,after_photo_path,submitted_by').eq('id',body.resolutionId).eq('report_id',params.id).maybeSingle();
     if (readError) throw readError;
     if (!resolution) return NextResponse.json({error:'Проверка не найдена'}, {status:404});
+    if (body.action === 'feedback' && resolution.state === 'verified') {
+      return NextResponse.json({error:'Решение подтверждено оператором Aýan. Отзывы жителей для этой проверки закрыты.'}, {status:403});
+    }
     let result;
     if (body.action === 'analyze') {
       if (resolution.state !== 'pending') return NextResponse.json({success:true});

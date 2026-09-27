@@ -11,10 +11,10 @@ export interface Resolution {
   ai_result: null | {likely_resolved:boolean; confidence:number; observations:string[]; requires_human_review:boolean};
 }
 export const resolutionLabels: Record<ResolutionState,string> = {
-  pending:'На проверке — ожидает проверки разработчиком',
-  ai_checked:'Фото проанализированы — ожидает проверки разработчиком',
+  pending:'На проверке — ожидает проверки оператором Aýan',
+  ai_checked:'Фото проанализированы — ожидает проверки оператором Aýan',
   needs_review:'Требуется дополнительная проверка',
-  resident_confirmed:'Житель сообщил об устранении — ожидает проверки разработчиком',
+  resident_confirmed:'Житель сообщил об устранении — ожидает проверки оператором Aýan',
   verified:'Решение подтверждено независимым проверяющим',
   reopened:'Повторно открыто',
 };
@@ -22,4 +22,12 @@ export function resolutionLabel(r: Pick<Resolution,'state'|'reviewed_at'>) {
   return r.state==='verified' && !r.reviewed_at
     ? 'Решено ранее — независимая проверка не зафиксирована'
     : resolutionLabels[r.state];
+}
+
+// Presentation only: preserve the existing AI result and human-review decisions.
+export function resolutionReviewMessage(ai: Resolution['ai_result']) {
+  const unavailable = !ai || (ai.confidence===0 && !ai.likely_resolved && ai.observations.length===1 && ai.observations[0]==='Изменение не удалось подтвердить по фото. Требуется дополнительная проверка.');
+  if(unavailable)return 'Автоматическая проверка недоступна. Решение проверит оператор Aýan.';
+  if(!ai.likely_resolved || ai.requires_human_review)return 'AI не смог уверенно подтвердить результат. Требуется проверка оператора Aýan.';
+  return 'AI считает, что проблема устранена. Окончательное подтверждение — оператором Aýan.';
 }

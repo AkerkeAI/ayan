@@ -89,12 +89,12 @@ export function OperatorLoginModal({ variant = 'sidebar' }: OperatorLoginModalPr
           }
         >
           <Shield className="h-4 w-4 mr-2" />
-          Вход для оператора / разработчика
+          Вход для исполнителя / оператора Aýan
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Вход для оператора / разработчика</DialogTitle>
+          <DialogTitle>Вход для исполнителя / оператора Aýan</DialogTitle>
           <DialogDescription>
             Введите свои учетные данные для доступа к панели управления
           </DialogDescription>

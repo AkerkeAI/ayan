@@ -43,9 +43,9 @@ export interface CreateMessageInput {
 /**
  * Create an organization message
  */
-export async function createOrganizationMessage(input: CreateMessageInput): Promise<OrganizationMessage | null> {
+export async function createOrganizationMessage(input: CreateMessageInput, db = supabase): Promise<OrganizationMessage | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('organization_messages')
       .insert({
         report_id: input.reportId,
@@ -209,7 +209,8 @@ export async function generateAndStoreMessage(
   reportId: string,
   organizationId: string,
   reportData: any,
-  organizationData: any
+  organizationData: any,
+  db = supabase
 ): Promise<OrganizationMessage | null> {
   try {
     // Import AI message generation (server-side only)
@@ -244,20 +245,10 @@ export async function generateAndStoreMessage(
       subject: formatted.subject,
       body: formatted.body,
       status: 'draft',
-    });
+    }, db);
 
     if (stored) {
-      // Create event for message preparation
-      const { createReportEvent } = await import('@/lib/events/report-events');
-      await createReportEvent(
-        reportId,
-        'message_prepared',
-        'Сообщение подготовлено',
-        `Черновик сообщения для ${organizationData.name}`,
-        'ai',
-        undefined,
-        organizationId
-      );
+      await db.rpc('create_report_event',{p_report_id:reportId,p_event_type:'message_prepared',p_title:'Сообщение подготовлено',p_description:`Черновик для ${organizationData.name}`,p_organization_id:organizationId});
     }
 
     return stored;

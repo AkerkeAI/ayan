@@ -191,7 +191,8 @@ export async function createReportWithPhoto(
 export async function routeReport(reportId: string): Promise<{
   success: true;
   reportId: string;
-  organizationId: string;
+  organizationId: string | null;
+  requiresManualRouting?: boolean;
 }> {
   console.log('[CLIENT_ROUTE_START] reportId=', reportId);
 
@@ -263,7 +264,7 @@ export async function buildStatusHistory(
       status: 'in_progress',
       date: updatedAt,
       comment: 'Заявка передана в профильную службу',
-      author: 'Оператор',
+      author: 'Исполнитель',
     });
   }
 
@@ -272,7 +273,7 @@ export async function buildStatusHistory(
       status: 'resolved',
       date: resolvedAt,
       comment: 'Проблема устранена. Работы завершены.',
-      author: 'Оператор',
+      author: 'Исполнитель',
     });
   }
 
@@ -285,4 +286,15 @@ interface StatusHistoryEntryLike {
   date: string;
   comment?: string;
   author: string;
+}
+
+// Authenticated operational queue is scoped inside PostgreSQL, never by a caller's organization ID.
+export async function fetchOperationalReports(): Promise<Report[]> {
+  const {data,error}=await supabase.rpc('get_operational_reports');
+  if(error)throw error;
+  return Promise.all((data as ReportRow[]).map(async row=>{
+    const report=rowToReport(row);
+    const {data:count}=await supabase.rpc('get_report_support_count',{p_report_id:report.id});
+    return {...report,supportCount:count??0};
+  }));
 }

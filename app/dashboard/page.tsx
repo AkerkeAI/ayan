@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CityMap from '@/components/city-map-client';
 import { StatusBadge } from '@/components/status-badge';
-import { fetchReports, fetchReportStats, fetchCategoryStats } from '@/lib/reports';
+import { fetchOperationalReports } from '@/lib/reports';
 import { Report, ReportStats, ReportCategory } from '@/lib/types';
 import { CATEGORY_LABELS } from '@/lib/types';
 import { getCategoryIcon, getCategoryLabel, CATEGORY_HEX } from '@/lib/categories';
@@ -26,7 +26,7 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isOperator, isLoading: authLoading } = useAuth();
+  const { isOperator, organizationId, isLoading: authLoading } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [stats, setStats] = useState<ReportStats>({ total: 0, new: 0, inProgress: 0, resolved: 0 });
   const [catStats, setCatStats] = useState<Record<string, number>>({});
@@ -39,21 +39,17 @@ export default function DashboardPage() {
     }
   }, [isOperator, authLoading, router]);
 
-  // Don't render anything while checking auth or if not operator
-  if (authLoading || !isOperator) {
-    return null;
-  }
-
   useEffect(() => {
-    Promise.all([fetchReports(), fetchReportStats(), fetchCategoryStats()])
-      .then(([r, s, c]) => {
-        setReports(r);
-        setStats(s);
-        setCatStats(c);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    if(authLoading || !isOperator)return;
+    let active=true;setLoading(true);setReports([]);
+    fetchOperationalReports().then(r=>{
+      if(!active)return;
+      setReports(r);setStats({total:r.length,new:r.filter(x=>x.status==='new').length,inProgress:r.filter(x=>x.status==='in_progress').length,resolved:r.filter(x=>x.status==='resolved').length});
+      const counts:Record<string,number>={};r.forEach(x=>counts[x.category]=(counts[x.category]??0)+1);setCatStats(counts);setLoading(false);
+    }).catch(()=>{if(active)setLoading(false);});
+    return()=>{active=false;};
+  },[authLoading,isOperator,organizationId]);
+  if(authLoading || !isOperator)return null;
 
   const recent = reports.slice(0, 5);
 
@@ -92,7 +88,7 @@ export default function DashboardPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-navy sm:text-3xl">Обзор</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Муниципальная панель управления обращениями граждан
+          Обращения, назначенные вашей организации
         </p>
       </div>
 

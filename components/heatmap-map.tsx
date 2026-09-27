@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import 'leaflet.heat';
+import { managedHeatLayer } from '@/lib/managed-heat-layer';
 import 'leaflet/dist/leaflet.css';
 import type { HeatmapPoint, Hotspot } from '@/lib/analytics';
 import { getCategoryLabel } from '@/lib/categories';
@@ -11,9 +11,9 @@ import styles from './heatmap-map.module.css';
 
 interface Props {
   points: HeatmapPoint[]; hotspots: Hotspot[]; selected: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string) => void; onReset: () => void; systemicIds?: string[];
 }
-export function HeatmapMap({ points, hotspots, selected, onSelect }: Props) {
+export function HeatmapMap({ points, hotspots, selected, onSelect, onReset, systemicIds = [] }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const heat = useRef<L.HeatLayer | null>(null);
@@ -25,20 +25,24 @@ export function HeatmapMap({ points, hotspots, selected, onSelect }: Props) {
   };
   useEffect(() => {
     if (!container.current) return;
-    const instance = L.map(container.current, { scrollWheelZoom: false }).setView([43.6588,51.1655],12);
+    const instance = L.map(container.current, { scrollWheelZoom: false, zoomAnimation: false }).setView([43.6588,51.1655],12);
     map.current = instance;
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19, className: styles.tiles,
     }).addTo(instance);
-    heat.current = L.heatLayer([], {
+    heat.current = managedHeatLayer({
       radius: 36, blur: 28, max: 6, maxZoom: 14, minOpacity: 0.22,
       gradient: { 0.15: '#164e9b', 0.4: '#168ee0', 0.65: '#22d3ee', 1: '#c5f6ff' },
     }).addTo(instance);
     indicators.current = L.layerGroup().addTo(instance);
-    const observer = new ResizeObserver(() => instance.invalidateSize());
+    const observer = new ResizeObserver(() => { if (map.current === instance) instance.invalidateSize(); });
     observer.observe(container.current);
-    return () => { observer.disconnect(); instance.remove(); map.current = null; heat.current = null; indicators.current = null; };
+    return () => {
+      observer.disconnect(); map.current = null;
+      instance.stop(); // Cancel flyTo/pan before detaching layers and their pending RAF.
+      instance.remove(); heat.current = null; indicators.current = null;
+    };
   }, []);
   useEffect(() => {
     heat.current?.setLatLngs(points.map(p => [p.latitude,p.longitude,p.intensity]));
@@ -54,17 +58,17 @@ export function HeatmapMap({ points, hotspots, selected, onSelect }: Props) {
       const label = `${getCategoryLabel(zone.category as ReportCategory)}: ${zone.report_count} обращений`;
       L.marker([zone.center_lat,zone.center_lng], {
         title: label, alt: label,
-        icon: L.divIcon({ className: styles.hotspot, html: `<span>${index + 1}</span>`, iconSize: [30,30], iconAnchor: [15,15] }),
+        icon: L.divIcon({ className: systemicIds.includes(zone.hotspot_id) ? `${styles.hotspot} ${styles.systemic}` : styles.hotspot, html: `<span>${index + 1}</span>`, iconSize: [30,30], iconAnchor: [15,15] }),
       }).on('click', () => onSelect(zone.hotspot_id)).addTo(layer);
     });
-  }, [hotspots,onSelect]);
+  }, [hotspots,onSelect,systemicIds]);
   useEffect(() => {
     const zone = hotspots.find(item => item.hotspot_id === selected);
     if (zone) map.current?.flyTo([zone.center_lat,zone.center_lng],16,{duration:0.6});
   }, [selected,hotspots]);
   return <div className={styles.frame}>
     <div ref={container} className={styles.map} role="region" aria-label="Тепловая карта реальных обращений" />
-    <button type="button" onClick={fit} className={styles.fit}>Показать все точки</button>
+    <button type="button" onClick={() => { onReset(); fit(); }} className={styles.fit}>Показать все точки</button>
     <div className={styles.legend}><span>Ниже</span><i/><span>Выше концентрация</span></div>
   </div>;
 }

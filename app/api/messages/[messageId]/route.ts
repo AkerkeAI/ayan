@@ -1,80 +1,27 @@
-/**
- * API Route for Message Operations
- * 
- * PATCH /api/messages/[messageId] - Update message
- * DELETE /api/messages/[messageId] - Delete message
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { updateMessageBody, deleteMessage, updateMessageStatus } from '@/lib/messaging/organization-messages';
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { messageId: string } }
-) {
-  try {
-    const body = await request.json();
-    const { messageId } = params;
-    const { body: messageBody, status, providerMessageId } = body;
-
-    if (status) {
-      // Update status
-      const success = await updateMessageStatus(messageId, status, providerMessageId);
-      if (!success) {
-        return NextResponse.json(
-          { error: 'Failed to update message status' },
-          { status: 500 }
-        );
-      }
-      return NextResponse.json({ success: true });
-    }
-
-    if (messageBody) {
-      // Update body
-      const success = await updateMessageBody(messageId, messageBody);
-      if (!success) {
-        return NextResponse.json(
-          { error: 'Failed to update message body' },
-          { status: 500 }
-        );
-      }
-      return NextResponse.json({ success: true });
-    }
-
-    return NextResponse.json(
-      { error: 'No valid update fields provided' },
-      { status: 400 }
-    );
-  } catch (error) {
-    console.error('Error in message update API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+import { requestDatabase,hasRole } from '@/lib/server/authorization';
+import { z } from 'zod';
+const update=z.object({body:z.string().trim().min(1).max(12000).optional(),status:z.enum(['draft','sending','sent','error','received']).optional(),providerMessageId:z.string().max(500).optional()}).strict();
+async function access(request:NextRequest,id:string){
+ const db=requestDatabase(request);
+ if(!await hasRole(db,'developer'))return null;
+ const {data}=await db.from('organization_messages').select('report_id').eq('id',id).maybeSingle();
+ return data?db:null;
 }
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { messageId: string } }
-) {
-  try {
-    const { messageId } = params;
-    const success = await deleteMessage(messageId);
-
-    if (!success) {
-      return NextResponse.json(
-        { error: 'Failed to delete message' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error in message delete API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+export async function PATCH(request:NextRequest,{params}:{params:{messageId:string}}){
+ const db=await access(request,params.messageId);if(!db)return NextResponse.json({error:'Нет доступа'},{status:403});
+ const body=update.safeParse(await request.json().catch(()=>null));
+ if(!body.success || (!body.data.body&&!body.data.status))return NextResponse.json({error:'Некорректные данные'},{status:400});
+ const patch:Record<string,string>={};
+ if(body.data.body)patch.body=body.data.body;
+ if(body.data.status)patch.status=body.data.status;
+ if(body.data.status==='sent')patch.sent_at=new Date().toISOString();
+ if(body.data.providerMessageId)patch.provider_message_id=body.data.providerMessageId;
+ const {data,error}=await db.from('organization_messages').update(patch).eq('id',params.messageId).select('id').maybeSingle();
+ return error||!data?NextResponse.json({error:'Не удалось обновить сообщение'},{status:409}):NextResponse.json({success:true});
+}
+export async function DELETE(request:NextRequest,{params}:{params:{messageId:string}}){
+ const db=await access(request,params.messageId);if(!db)return NextResponse.json({error:'Нет доступа'},{status:403});
+ const {data,error}=await db.from('organization_messages').delete().eq('id',params.messageId).eq('status','draft').select('id').maybeSingle();
+ return error||!data?NextResponse.json({error:'Можно удалить только доступный черновик'},{status:409}):NextResponse.json({success:true});
 }

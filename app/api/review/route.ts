@@ -4,7 +4,7 @@ import { requestDatabase, hasRole } from '@/lib/server/authorization';
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const db = requestDatabase(request);
-  if (!await hasRole(db,'developer')) return NextResponse.json({error:'Доступ только для разработчика-проверяющего'}, {status:403});
+  if (!await hasRole(db,'developer')) return NextResponse.json({error:'Доступ только для оператора Aýan'}, {status:403});
   const reportId = request.nextUrl.searchParams.get('reportId');
   if (reportId && !z.string().uuid().safeParse(reportId).success) return NextResponse.json({error:'Некорректный ID'}, {status:400});
   const page = Number(request.nextUrl.searchParams.get('page') || '0');

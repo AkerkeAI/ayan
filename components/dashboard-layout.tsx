@@ -21,7 +21,7 @@ const NAV = [
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const { isOperator, isDeveloper } = useAuth();
+  const { isOperator, isDeveloper, organizationName } = useAuth();
 
   return (
     <aside className="flex h-full w-full flex-col bg-navy text-white lg:w-64 lg:fixed lg:top-0 lg:left-0 lg:h-screen">
@@ -37,6 +37,7 @@ export function DashboardSidebar() {
         </div>
       </div>
 
+      {isOperator && <p className="border-b border-white/10 px-5 py-3 text-xs text-white/70">{organizationName ?? "Организация пока не назначена"}</p>}
       <nav className="flex-1 px-3 py-4">
         <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
           Управление
@@ -81,12 +82,14 @@ export function DashboardSidebar() {
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const {isOperator,organizationId}=useAuth();
   return (
     <div className="min-h-screen bg-background">
       <div className="flex flex-col lg:flex-row">
         <DashboardSidebar />
         <main className="flex-1 lg:ml-64">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            {isOperator && !organizationId && <div role="status" className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">Ваш аккаунт пока не связан с действующей организацией. Попросите администратора выполнить назначение. Работа с обращениями станет доступна после этого.</div>}
             {children}
           </div>
         </main>

@@ -45,7 +45,7 @@ const STATUS_TIMELINE_COLORS: Record<ReportStatus, string> = {
 
 export default function ReportDetailPage() {
   const params = useParams();
-  const { isOperator, isDeveloper } = useAuth();
+  const { isOperator, isDeveloper, organizationId } = useAuth();
   const id = params.id as string;
   const [latestResolution, setLatestResolution] = useState<Resolution | null | undefined>(undefined);
   const [report, setReport] = useState<Report | null>(null);
@@ -55,6 +55,7 @@ export default function ReportDetailPage() {
   const [history, setHistory] = useState<StatusHistoryEntry[]>([]);
   const [hasSupported, setHasSupported] = useState(false);
   const [supporting, setSupporting] = useState(false);
+  const canOperate = isOperator && !!organizationId && report?.organizationId===organizationId;
 
   useEffect(() => {
     fetchReportById(id)
@@ -109,7 +110,7 @@ export default function ReportDetailPage() {
   }, [report]);
 
   async function changeStatus(newStatus: ReportStatus) {
-    if (!report || newStatus === report.status || !isOperator) return;
+    if (!report || newStatus === report.status || !canOperate) return;
     setUpdating(true);
     try {
       const updated = await updateReportStatus(report.id, newStatus);
@@ -267,7 +268,7 @@ export default function ReportDetailPage() {
             </div>
           </div>
 
-          <ResolutionSection onLatestChange={setLatestResolution} report={report} isOperator={isOperator} onChanged={async () => {
+          <ResolutionSection onLatestChange={setLatestResolution} report={report} isOperator={canOperate} onChanged={async () => {
             const updated = await fetchReportById(id); if (updated) setReport(updated);
           }} />
 
@@ -346,10 +347,10 @@ export default function ReportDetailPage() {
           )}
 
           {/* Status control - only for operators */}
-          {isOperator && (
+          {canOperate && (
             <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
               <h3 className="mb-3 font-semibold text-navy">Управление статусом</h3>
-              <p className="mb-3 text-sm text-muted-foreground">Для завершения обращения предоставьте описание и фото в разделе «Проверка решения». Подтвердить результат может только независимый разработчик-проверяющий.</p>
+              <p className="mb-3 text-sm text-muted-foreground">Для завершения обращения предоставьте описание и фото в разделе «Проверка решения». Подтвердить результат может только оператор Aýan.</p>
               {(report.status==='resolved' || (latestResolution && latestResolution.state!=='reopened')) && <p className="mb-3 text-sm">Изменение статуса выполняется через проверку решения.</p>}
               <div className="space-y-2">
                 {STATUS_ORDER.map((s) => {
@@ -380,8 +381,8 @@ export default function ReportDetailPage() {
             </div>
           )}
 
-          {/* Communication section - operators only */}
-          {isOperator && (
+          {/* Communication section - independent Aýan staff only */}
+          {isDeveloper && (
             <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
               <h3 className="mb-3 font-semibold text-navy">Связь с организацией</h3>
               <CommunicationSection report={report} />

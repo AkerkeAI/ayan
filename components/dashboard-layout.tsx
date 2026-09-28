@@ -63,6 +63,7 @@ export function DashboardSidebar() {
           );
         })}
         {isDeveloper && <Link href="/dashboard/review" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white hover:bg-white/10"><ListChecks className="h-4 w-4"/>Проверка решений</Link>}
+        {isDeveloper && <Link href="/dashboard/categories" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white hover:bg-white/10"><ListChecks className="h-4 w-4"/>Новые категории</Link>}
       </nav>
 
       <div className="border-t border-white/10 p-3 space-y-2">

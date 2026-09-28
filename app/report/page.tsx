@@ -209,7 +209,11 @@ export default function ReportPage() {
     setBypassDuplicateCheck(false);
 
     try {
-      await routeReport(report.id);
+      if (category === 'other') {
+        await fetch(`/api/reports/${report.id}/category-discovery`, { method: 'POST' });
+      } else {
+        await routeReport(report.id);
+      }
     } catch (error) {
       console.error('[POST_PROCESS_ROUTING_ERROR]', error);
     }
@@ -363,6 +367,8 @@ export default function ReportPage() {
               })}
             </div>
           </div>
+
+          {category === 'other' && <p className="text-sm text-muted-foreground">После отправки фотография и описание будут переданы Gemini для уточнения категории. Если AI не уверен, обращение останется в категории «Другое».</p>}
 
           {/* Description */}
           <div className="rounded-xl border border-border bg-white p-5 shadow-sm">

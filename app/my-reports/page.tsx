@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
-import { StatusBadge } from '@/components/status-badge';
 import { ReportCard } from '@/components/report-card';
-import { fetchReports } from '@/lib/reports';
+import { fetchMyReports } from '@/lib/my-reports';
 import { Report, ReportStatus } from '@/lib/types';
 import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, FileText, Loader2, AlertCircle } from 'lucide-react';
@@ -24,7 +23,7 @@ export default function MyReportsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchReports()
+    fetchMyReports()
       .then((data) => {
         setReports(data);
         setLoading(false);
@@ -65,8 +64,9 @@ export default function MyReportsPage() {
               Мои обращения
             </h1>
             <p className="mt-1 text-muted-foreground">
-              История ваших обращений и их статусы
+              Обращения, отправленные из этого браузера
             </p>
+            <p className="mt-2 text-sm text-muted-foreground">При очистке данных браузера или смене устройства история не сохранится. Старые обращения без записи об отправке здесь не отображаются.</p>
           </div>
           <Link
             href="/report"
@@ -137,7 +137,7 @@ export default function MyReportsPage() {
               <div className="mt-12 rounded-xl border border-border bg-white p-12 text-center">
                 <FileText className="mx-auto h-10 w-10 text-muted-foreground/40" />
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Нет обращений с этим статусом
+                  {reports.length ? 'Нет обращений с этим статусом' : 'Из этого браузера пока нет сохранённых обращений'}
                 </p>
               </div>
             )}

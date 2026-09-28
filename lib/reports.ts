@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client';
+import { rememberCreatedReport } from './anonymous-history';
 import {
   Report,
   ReportStatus,
@@ -172,6 +173,10 @@ export async function createReport(input: NewReportInput): Promise<Report> {
   }
 
   const report = rowToReport(data as ReportRow);
+  // Record only the ID returned by a successful INSERT, never guesses/legacy reports.
+  if (typeof window !== 'undefined') {
+    try { rememberCreatedReport(report.id); } catch { /* saved report remains successful */ }
+  }
   console.log('[REPORT_CREATED] reportId=', report.id);
   return report;
 }

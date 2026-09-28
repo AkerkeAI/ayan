@@ -20,7 +20,7 @@ export function SiteHeader() {
   const {isOperator,isDeveloper,isLoading,logout}=useAuth();
   const staff=!isLoading && (isOperator || isDeveloper);
   const links=staff ? [
-    ...(isOperator ? [{href:'/dashboard',label:'Обзор'},{href:'/dashboard/reports',label:'Обращения'},{href:'/dashboard/analytics',label:'Аналитика'}] : [{href:'/dashboard/reports',label:'Обращения'},{href:'/dashboard/review',label:'Проверка решений'}]),
+    ...(isOperator ? [{href:'/dashboard',label:'Обзор'},{href:'/dashboard/reports',label:'Обращения'},{href:'/dashboard/analytics',label:'Аналитика'}] : [{href:'/dashboard/reports',label:'Обращения'},{href:'/dashboard/review',label:'Проверка решений'},{href:'/dashboard/categories',label:'Новые категории'}]),
     {href:'/',label:'На сайт'},
   ] : NAV_LINKS;
   const signOut=async()=>{try{await logout();setOpen(false);}catch{toast.error('Не удалось выйти. Попробуйте ещё раз.');}};

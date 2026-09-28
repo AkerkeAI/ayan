@@ -1,5 +1,6 @@
 'use client';
 
+import {NotificationLink} from '@/components/staff-notifications';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -63,6 +64,7 @@ export function SiteHeader() {
               </Link>
             );
           })}
+          {staff && <NotificationLink main/>}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -109,6 +111,7 @@ export function SiteHeader() {
                 </Link>
               );
             })}
+            {staff && <NotificationLink main onClick={()=>setOpen(false)}/>}
             {!staff && <Link
               href="/report"
               onClick={() => setOpen(false)}

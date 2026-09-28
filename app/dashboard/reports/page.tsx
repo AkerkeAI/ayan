@@ -1,4 +1,7 @@
 'use client';
+import { ReportClaim } from '@/components/report-claim';
+import { supabase } from '@/lib/supabase-client';
+import { toast } from 'sonner';
 
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { StatusBadge } from '@/components/status-badge';
@@ -9,7 +12,7 @@ import { formatDate } from '@/components/report-card';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, ArrowRight, Loader2, Users } from 'lucide-react';
 
 const STATUS_FILTERS: { value: 'all' | ReportStatus; label: string }[] = [
@@ -27,6 +30,8 @@ export default function DashboardReportsPage() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'most_supported' | 'longest_unresolved'>('newest');
   const [reports, setReports] = useState<Report[]>([]);
+  const visibleReports=useRef<Report[]>([]);
+  visibleReports.current=reports;
   const [loading, setLoading] = useState(true);
 
   useEffect(()=>{if(!authLoading&&!isOperator&&!isDeveloper)router.replace('/');},[authLoading,isOperator,isDeveloper,router]);
@@ -34,7 +39,15 @@ export default function DashboardReportsPage() {
     if(authLoading||(!isOperator&&!isDeveloper))return;
     let active=true;setLoading(true);setReports([]);
     fetchOperationalReports().then(data=>{if(active){setReports(data);setLoading(false);}}).catch(()=>{if(active)setLoading(false);});
-    return()=>{active=false;};
+    const refresh=()=>{void fetchOperationalReports().then(data=>{if(active)setReports(data);}).catch(()=>{});};
+    const channel=supabase.channel('operational-claims').on('postgres_changes',{event:'UPDATE',schema:'public',table:'reports'},payload=>{
+      const changed=payload.new as {id?:string;organization_id?:string};
+      if(isOperator&&changed.organization_id&&changed.organization_id!==organizationId&&visibleReports.current.some(r=>r.id===changed.id&&!r.organizationId))toast.info('Задачу уже взяла другая организация');
+      refresh();
+    }).subscribe();
+    window.addEventListener('ayan-claims-changed',refresh);
+    const timer=setInterval(refresh,5000);
+    return()=>{active=false;clearInterval(timer);window.removeEventListener('ayan-claims-changed',refresh);void supabase.removeChannel(channel);};
   },[authLoading,isOperator,isDeveloper,organizationId]);
 
   const filtered = useMemo(() => {
@@ -80,7 +93,7 @@ export default function DashboardReportsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-navy sm:text-3xl">Обращения</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {isDeveloper?'Обращения для независимой проверки':'Обращения вашей организации'}
+          {isDeveloper?'Обращения для независимой проверки':'Доступные задачи и обращения вашей организации'}
         </p>
       </div>
 
@@ -179,6 +192,7 @@ export default function DashboardReportsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={r.status} />
+                        {isOperator && !r.organizationId && <ReportClaim reportId={r.id}/>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">

@@ -1,5 +1,6 @@
 'use client';
 
+import { ReportClaim } from '@/components/report-claim';
 import { Resolution, resolutionLabel } from '@/lib/resolutions/types';
 import { ResolutionSection } from '@/components/resolution-section';
 import { DashboardLayout } from '@/components/dashboard-layout';
@@ -11,7 +12,7 @@ import { ReportStatus, STATUS_LABELS, Report, StatusHistoryEntry } from '@/lib/t
 import { formatDate } from '@/components/report-card';
 import { getCategoryIcon, getCategoryLabel } from '@/lib/categories';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { CommunicationSection } from '@/components/communication-section';
@@ -55,7 +56,9 @@ export default function ReportDetailPage() {
   const [history, setHistory] = useState<StatusHistoryEntry[]>([]);
   const [hasSupported, setHasSupported] = useState(false);
   const [supporting, setSupporting] = useState(false);
-  const canOperate = isOperator && !!organizationId && report?.organizationId===organizationId;
+  const [claimAccess,setClaimAccess]=useState(false);
+  const canOperate = isOperator && claimAccess;
+  const refreshClaimReport=useCallback(()=>{void fetchReportById(id).then(data=>{if(data)setReport(data);});},[id]);
 
   useEffect(() => {
     fetchReportById(id)
@@ -346,6 +349,7 @@ export default function ReportDetailPage() {
             </div>
           )}
 
+          {isOperator && <ReportClaim reportId={id} onAccess={setClaimAccess} onChanged={refreshClaimReport}/>}
           {/* Status control - only for operators */}
           {canOperate && (
             <div className="rounded-xl border border-border bg-white p-5 shadow-sm">

@@ -13,6 +13,7 @@ function load(file) {
  const module={exports:{}};
  new Function('exports','require','module',code)(module.exports,(name)=>{
   if(name==='@/lib/server/authorization')return {requestDatabase:()=>db,hasRole:async(_db,required)=>role===required,advisoryDatabase:()=>null,canOperateReport:async()=>allowedReport};
+  if(name==='@/lib/category-discovery/diagnostics')return {safeError:()=>({code:'TEST'})};
   if(name==='@/lib/resolutions/ai')return {compareEvidence:async()=>{throw Error('must not be reached')}};
   if(name==='@/lib/resolutions/images')return {fetchEvidence:async()=>{throw Error('must not be reached')}};
   return require(name);
@@ -21,7 +22,7 @@ function load(file) {
 const resolution='20000000-0000-4000-8000-000000000001',report='30000000-0000-4000-8000-000000000001';
 const {POST}=load('app/api/reports/[id]/resolutions/route.ts');const {GET}=load('app/api/review/route.ts');
 const post=(action)=>POST(new NextRequest('http://localhost/api/reports/'+report+'/resolutions',{
- method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer test-only'},body:JSON.stringify({action,resolutionId:resolution,...(action==='feedback'?{token:'40000000-0000-4000-8000-000000000001',decision:'reopen'}:{})}),
+ method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer test-only'},body:JSON.stringify({action,resolutionId:resolution,...(action==='reopen'?{reason:'Нужны доказательства результата'}:{}),...(action==='feedback'?{token:'40000000-0000-4000-8000-000000000001',decision:'reopen'}:{})}),
 }),{params:{id:report}});
 (async()=>{
  for(const actor of ['operator','resident',null]){
